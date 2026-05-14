@@ -496,8 +496,8 @@
         var parent = this.__closestGroupOrSvg();
         if (parent.childNodes.length > 0) {
         	if (this.__currentElement.nodeName === "path") {
-        		if (!this.__currentElementsToStyle) this.__currentElementsToStyle = {element: parent, children: []};
-        		this.__currentElementsToStyle.children.push(this.__currentElement)
+        		//if (!this.__currentElementsToStyle) this.__currentElementsToStyle = {element: parent, children: []};
+        		//this.__currentElementsToStyle.children.push(this.__currentElement)
         		this.__applyCurrentDefaultPath();
         	}
 
@@ -1041,6 +1041,60 @@
 
         this.__currentPosition = {x: endX, y: endY};
     };
+
+
+
+    /**
+     *  Arc command!
+     */
+    ctx.prototype.ellipse = function (x, y, radiusx, radiusy, rotation, startAngle, endAngle) {
+        // in canvas no circle is drawn if no angle is provided.
+        if (startAngle === endAngle) {
+            return;
+        }
+        startAngle = startAngle % (2*Math.PI);
+        endAngle = endAngle % (2*Math.PI);
+        if (startAngle === endAngle) {
+            //circle time! subtract some of the angle so svg is happy (svg elliptical arc can't draw a full circle)
+            endAngle = ((endAngle + (2*Math.PI)) - 0.001 ) % (2*Math.PI);
+        }
+        // Compute vars endX, endY, startX, startY, sweepFlag, largeArcFlag, diff for the ellipse
+        var endX = x + radiusx * Math.cos(rotation) * Math.cos(endAngle) - radiusy * Math.sin(rotation) * Math.sin(endAngle);
+        var endY = y + radiusx * Math.sin(rotation) * Math.cos(endAngle) + radiusy * Math.cos(rotation) * Math.sin(endAngle);
+        var startX = x + radiusx * Math.cos(rotation) * Math.cos(startAngle) - radiusy * Math.sin(rotation) * Math.sin(startAngle);
+        var startY = y + radiusx * Math.sin(rotation) * Math.cos(startAngle) + radiusy * Math.cos(rotation) * Math.sin(startAngle);
+        var sweepFlag = 1;
+        var largeArcFlag = 0;
+        var diff = endAngle - startAngle;
+        
+
+        // https://github.com/gliffy/canvas2svg/issues/4
+        if (diff < 0) {
+            diff += 2*Math.PI;
+        }
+
+        if (sweepFlag === 0) {
+            largeArcFlag = diff > Math.PI ? 0 : 1;
+        } else {
+            largeArcFlag = diff > Math.PI ? 1 : 0;
+        }
+
+        this.lineTo(startX, startY);
+        // Create a call to addPathCommand to draw the ellipse. 
+        // The format should be "A {rx} {ry} {xAxisRotation} {largeArcFlag} {sweepFlag} {endX} {endY}"
+        // where rx and ry are the radii of the ellipse, xAxisRotation is the rotation of the ellipse,
+        // largeArcFlag is 0 or 1, sweepFlag is 0 or 1, endX and endY are the end points of the ellipse.
+        // The xAxisRotation is 0 because we are not rotating the ellipse.
+        // The largeArcFlag is 0 if the difference between endAngle and startAngle is less than Math.PI, otherwise it is 1.
+        // The sweepFlag is 0 if the difference between endAngle and startAngle is less than Math.PI, otherwise it is 1.
+        // The endX and endY are the end points of the ellipse. 
+        this.__addPathCommand(format("A {rx} {ry} {xAxisRotation} {largeArcFlag} {sweepFlag} {endX} {endY}",
+            {rx:radiusx, ry:radiusy, xAxisRotation:rotation, largeArcFlag:largeArcFlag, sweepFlag:sweepFlag, endX:endX, endY:endY}));
+
+        this.__currentPosition = {x: endX, y: endY};
+    };
+
+
 
     /**
      * Generates a ClipPath from the clip command.
