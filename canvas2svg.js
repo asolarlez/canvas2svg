@@ -697,7 +697,7 @@
 
         // note that both vectors are unit vectors, so the length is 1
         var cos = (unit_vec_p1_p0[0] * unit_vec_p1_p2[0] + unit_vec_p1_p0[1] * unit_vec_p1_p2[1]);
-        var theta = Math.acos(Math.abs(cos));
+        var theta = Math.acos(cos);
 
         // Calculate origin
         var unit_vec_p1_origin = normalize([
@@ -709,21 +709,21 @@
         var y = y1 + len_p1_origin * unit_vec_p1_origin[1];
 
         // Calculate start angle and end angle
-        // rotate 90deg clockwise (note that y axis points to its down)
+        // unit vector from circle center to start tangent point: (a*cos - b) / sin(theta)
+        var sinTheta = Math.sin(theta);
         var unit_vec_origin_start_tangent = [
-            -unit_vec_p1_p0[1],
-            unit_vec_p1_p0[0]
+            (unit_vec_p1_p0[0] * cos - unit_vec_p1_p2[0]) / sinTheta,
+            (unit_vec_p1_p0[1] * cos - unit_vec_p1_p2[1]) / sinTheta
         ];
-        // rotate 90deg counter clockwise (note that y axis points to its down)
+        // unit vector from circle center to end tangent point: (b*cos - a) / sin(theta)
         var unit_vec_origin_end_tangent = [
-            unit_vec_p1_p2[1],
-            -unit_vec_p1_p2[0]
+            (unit_vec_p1_p2[0] * cos - unit_vec_p1_p0[0]) / sinTheta,
+            (unit_vec_p1_p2[1] * cos - unit_vec_p1_p0[1]) / sinTheta
         ];
         var getAngle = function (vector) {
-            // get angle (clockwise) between vector and (1, 0)
             var x = vector[0];
             var y = vector[1];
-            if (y >= 0) { // note that y axis points to its down
+            if (y >= 0) {
                 return Math.acos(x);
             } else {
                 return -Math.acos(x);
@@ -731,6 +731,8 @@
         };
         var startAngle = getAngle(unit_vec_origin_start_tangent);
         var endAngle = getAngle(unit_vec_origin_end_tangent);
+        // cross product determines arc direction: positive → counterclockwise, negative → clockwise
+        var cross = unit_vec_p1_p0[0] * unit_vec_p1_p2[1] - unit_vec_p1_p0[1] * unit_vec_p1_p2[0];
 
         // Connect the point (x0, y0) to the start tangent point by a straight line
         this.lineTo(x + unit_vec_origin_start_tangent[0] * radius,
@@ -738,7 +740,7 @@
 
         // Connect the start tangent point to the end tangent point by arc
         // and adding the end tangent point to the subpath.
-        this.arc(x, y, radius, startAngle, endAngle);
+        this.arc(x, y, radius, startAngle, endAngle, cross > 0);
     };
 
     /**
